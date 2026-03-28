@@ -1,0 +1,7 @@
+.git
+.idea
+data/msrvtt/msrvtt_videos_features.pickle
+venv
+__pycache__
+.DS_Store
+ckpts

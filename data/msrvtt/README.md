@@ -1,0 +1,1 @@
+MSRVTT_data.json, MSRVTT_JSFUSION_test.csv, and MSRVTT_train.7k.csv (rename from orignal MSRVTT_train.csv) are from: https://github.com/antoine77340/howto100m#downloading-meta-data-for-evaluation-csv-pre-extracted-features-for-evaluation-word2vec
