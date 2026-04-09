@@ -532,7 +532,7 @@ class UniVL(UniVLPreTrainedModel):
         if t5_output_caption_ids is not None:
             t5_output_caption_ids = t5_output_caption_ids.view(-1, t5_output_caption_ids.shape[-1])
 
-        with torch.cuda.amp.autocast(dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
+        with torch.amp.autocast(dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
             inputs_embeds, encoder_atts = self._build_t5_encoder_inputs(
                 visual_output, video_mask
             )
