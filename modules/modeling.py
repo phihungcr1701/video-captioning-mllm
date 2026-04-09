@@ -521,7 +521,7 @@ class UniVL(UniVLPreTrainedModel):
 
         output_caption_ids = output_caption_ids.view(-1, output_caption_ids.shape[-1])
 
-        with torch.cuda.amp.autocast(dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
+        with torch.amp.autocast(dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
             inputs_embeds, encoder_atts = self._build_t5_encoder_inputs(
                 visual_output, video_mask
             )
@@ -535,7 +535,7 @@ class UniVL(UniVLPreTrainedModel):
         if max_length is None:
             max_length = getattr(self, "max_txt_len", 32)
 
-        with torch.cuda.amp.autocast(dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
+        with torch.amp.autocast(dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
             inputs_embeds, encoder_atts = self._build_t5_encoder_inputs(
                 visual_output, video_mask
             )
@@ -625,7 +625,7 @@ class UniVL(UniVLPreTrainedModel):
             input_caption_ids = input_caption_ids.view(-1, input_caption_ids.shape[-1])
             decoder_mask = decoder_mask.view(-1, decoder_mask.shape[-1])
 
-        with torch.cuda.amp.autocast(dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
+        with torch.amp.autocast(dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
             inputs_embeds, encoder_atts = self._build_t5_encoder_inputs(
                 visual_output, video_mask
             )
