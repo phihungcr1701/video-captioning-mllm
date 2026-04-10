@@ -1,11 +1,11 @@
 __author__ = 'tylin'
-from .tokenizer.ptbtokenizer import PTBTokenizer
-from .bleu.bleu import Bleu
-from .meteor.meteor import Meteor
-from .rouge.rouge import Rouge
-from .cider.cider import Cider
-from .spice.spice import Spice
-from .clipscore.clipscore import ClipScore
+from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+from pycocoevalcap.bleu.bleu import Bleu
+from pycocoevalcap.meteor.meteor import Meteor
+from pycocoevalcap.rouge.rouge import Rouge
+from pycocoevalcap.cider.cider import Cider
+from pycocoevalcap.spice.spice import Spice
+from pycocoevalcap.clipscore.clipscore import ClipScore
 
 
 class COCOEvalCap:

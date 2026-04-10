@@ -1,6 +1,7 @@
 import torch
 from inference.eval_utils import decode_tokens_to_text, save_predictions, save_complete_results, log_metrics
-from tasks.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+# from tasks.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
 
 
 def eval_epoch(args, model, test_dataloader, tokenizer, device, n_gpu, logger, nlgEvalObj=None, test_set=None):

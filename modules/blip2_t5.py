@@ -18,8 +18,8 @@ from modules.modeling_t5 import T5Config, T5ForConditionalGeneration
 import itertools
 import numpy as np
 
-from tasks.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
-from tasks.pycocoevalcap.cider.cider import Cider
+from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+from pycocoevalcap.cider.cider import Cider
 
 from peft import LoraConfig, TaskType, get_peft_model
 

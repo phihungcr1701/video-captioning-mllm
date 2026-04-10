@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 
 def tokenize(refs, cands, no_op=False):
-    from tasks.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
+    from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
 
     tokenizer = PTBTokenizer()
 
@@ -477,7 +477,7 @@ class UniVL(UniVLPreTrainedModel):
         return outputs.loss
 
     def _compute_scst_caption_loss(self, inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids=None):
-        from tasks.pycocoevalcap.cider.cider import Cider
+        from pycocoevalcap.cider.cider import Cider
 
         outputs = self.t5_model.generate(
             inputs_embeds=inputs_embeds,
