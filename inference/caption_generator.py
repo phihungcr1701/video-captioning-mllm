@@ -4,6 +4,8 @@ from tasks.pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
 
 
 def eval_epoch(args, model, test_dataloader, tokenizer, device, n_gpu, logger, nlgEvalObj=None, test_set=None):
+    bleu_4 = 0.0
+
     if hasattr(model, 'module'):
         model = model.module.to(device)
 
@@ -106,8 +108,9 @@ def eval_epoch(args, model, test_dataloader, tokenizer, device, n_gpu, logger, n
         metrics_nlg = nlgEvalObj.compute_metrics(ref_list=ref_list_tokenized, hyp_list=hyp_list_tokenized)
         log_metrics(logger, metrics_nlg)
         CIDEr = metrics_nlg.get("CIDEr", 0.0)
+        bleu_4 = metrics_nlg.get("Bleu_4", 0.0)
     else:
         logger.warning("Evaluation metrics skipped (pycocoevalcap not available)")
         CIDEr = 0.0
     
-    return CIDEr, avg_val_loss
+    return CIDEr, avg_val_loss, bleu_4

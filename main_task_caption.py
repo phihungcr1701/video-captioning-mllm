@@ -164,7 +164,8 @@ def main():
             logger.info("  Batch size = %d", args.batch_size)
             logger.info("  Num steps = %d", num_train_optimization_steps * args.gradient_accumulation_steps)
 
-        best_score = 0.00001
+        best_cider = float('-inf')
+        best_bleu_4 = float('-inf')
         best_output_model_file = None
         global_step = 0
         for epoch in range(args.epochs):
@@ -175,22 +176,31 @@ def main():
 
             if args.local_rank == 0:
                 logger.info("Epoch %d/%s Finished, Train Loss: %f", epoch + 1, args.epochs, tr_loss)
-                output_model_file = save_model(epoch, args, model, logger, type_name="")
+                output_model_file = save_model(0, args, model, logger, type_name="last")
                 if epoch >= 0:
-                    CIDEr, _ = eval_epoch(args, model, test_dataloader, tokenizer, device, n_gpu, logger, nlgEvalObj=nlgEvalObj)
-                    if best_score <= CIDEr:
-                        best_score = CIDEr
-                        best_output_model_file = output_model_file
-                    logger.info("The best model is: {}, the CIDEr is: {:.4f}".format(best_output_model_file, best_score))
+                    CIDEr, _, Bleu_4 = eval_epoch(args, model, test_dataloader, tokenizer, device, n_gpu, logger, nlgEvalObj=nlgEvalObj)
+
+                    is_better = (CIDEr > best_cider) or (CIDEr == best_cider and Bleu_4 > best_bleu_4)
+                    if is_better:
+                        best_cider = CIDEr
+                        best_bleu_4 = Bleu_4
+                        best_output_model_file = save_model(0, args, model, logger, type_name="best")
+
+                    logger.info(
+                        "The best model is: %s, CIDEr: %.4f, BLEU_4: %.4f",
+                        best_output_model_file,
+                        best_cider,
+                        best_bleu_4,
+                    )
                 else:
                     logger.warning("Skip the evaluation after {}-th epoch.".format(epoch+1))
 
         if args.local_rank == 0:
             model = load_model(-1, args, n_gpu, device, logger, model_file=best_output_model_file)
-            CIDEr, _ = eval_epoch(args, model, test_dataloader, tokenizer, device, n_gpu, logger, nlgEvalObj=nlgEvalObj)
+            CIDEr, _, _ = eval_epoch(args, model, test_dataloader, tokenizer, device, n_gpu, logger, nlgEvalObj=nlgEvalObj)
     elif args.do_eval:
         if args.local_rank == 0:
-            CIDEr, _ = eval_epoch(args, model, test_dataloader, tokenizer, device, n_gpu, logger, nlgEvalObj=nlgEvalObj)
+            CIDEr, _, _ = eval_epoch(args, model, test_dataloader, tokenizer, device, n_gpu, logger, nlgEvalObj=nlgEvalObj)
 
 
 if __name__ == "__main__":
