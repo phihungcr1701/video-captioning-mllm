@@ -362,7 +362,8 @@ class UniVL(UniVLPreTrainedModel):
                 self.task_config.task_type == "caption"):
                 decoder_loss = self._get_t5_caption_loss(visual_output,
                                                          video_mask,
-                                                         output_caption_ids)
+                                                         output_caption_ids,
+                                                         t5_output_caption_ids)
                 return decoder_loss, visual_output
             else:
                 return None, visual_output
@@ -533,6 +534,7 @@ class UniVL(UniVLPreTrainedModel):
         output_caption_ids = output_caption_ids.view(-1, output_caption_ids.shape[-1])
         if t5_output_caption_ids is not None:
             t5_output_caption_ids = t5_output_caption_ids.view(-1, t5_output_caption_ids.shape[-1])
+        caption_label_ids = t5_output_caption_ids if t5_output_caption_ids is not None else output_caption_ids
 
         with torch.amp.autocast(device_type="cuda",dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
             inputs_embeds, encoder_atts = self._build_t5_encoder_inputs(
@@ -540,7 +542,7 @@ class UniVL(UniVLPreTrainedModel):
             )
             if self.training and getattr(self, "scst", False):
                 return self._compute_scst_caption_loss(inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids)
-            return self._compute_xe_caption_loss(inputs_embeds, encoder_atts, output_caption_ids)
+            return self._compute_xe_caption_loss(inputs_embeds, encoder_atts, caption_label_ids)
 
     def generate_caption_ids(self, visual_output, video_mask, num_beams=None, max_length=None):
         if num_beams is None:

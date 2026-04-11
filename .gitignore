@@ -27,4 +27,5 @@ build/
 htmlcov/
 .tox/
 venv/
+hyp.txt
 
