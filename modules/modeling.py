@@ -111,7 +111,15 @@ class UniVLPreTrainedModel(PreTrainedModel, nn.Module):
 
     @staticmethod
     def _filter_init_model_state_dict(state_dict, task_config=None):
-        allowed_prefixes = ("bert.", "visual.")
+        allowed_prefixes = (
+            "bert.",
+            "visual.",
+            "Qformer.",
+            "query_tokens",
+            "qformer_visual_proj.",
+            "t5_model.",
+            "t5_proj.",
+        )
         filtered_state_dict = state_dict.__class__(
             (key, value) for key, value in state_dict.items()
             if key.startswith(allowed_prefixes)
@@ -123,7 +131,7 @@ class UniVLPreTrainedModel(PreTrainedModel, nn.Module):
         skipped = len(state_dict) - len(filtered_state_dict)
         show_log(
             task_config,
-            "Load init_model weights only for {} Skipped {} non-BERT/Visual tensors.".format(
+            "Load init_model weights only for {} Skipped {} other tensors.".format(
                 ", ".join(allowed_prefixes), skipped
             )
         )
