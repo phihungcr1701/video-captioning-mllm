@@ -300,7 +300,8 @@ class UniVL(UniVLPreTrainedModel):
         else:
             self.loss_fct = CrossEn() if self._stage_two else max_margin_ranking_loss
             self._pretrain_sim_loss_fct = max_margin_ranking_loss
-
+        
+        self._cider_scorer = None  # lazy init
         self._init_weights_except_pretrained_submodules()
 
     def _init_weights_except_pretrained_submodules(self):
@@ -533,55 +534,71 @@ class UniVL(UniVLPreTrainedModel):
         )
         return outputs.loss
 
-    def _compute_scst_caption_loss(self, inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids=None):
-        from pycocoevalcap.cider.cider import Cider
+    # def _compute_scst_caption_loss(self, inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids=None):
+    #     from pycocoevalcap.cider.cider import Cider
 
-        outputs = self.t5_model.generate(
-            inputs_embeds=inputs_embeds,
-            attention_mask=encoder_atts,
-            do_sample=False,
-            top_p=0.9,
-            temperature=1,
-            num_beams=self.beam_size,
-            max_length=self.max_txt_len,
-            repetition_penalty=1.2,
-            length_penalty=1.0,
-            num_return_sequences=self.beam_size,
-            return_dict_in_generate=True,
-            output_scores=True,
-        )
+    #     with torch.no_grad():
+    #         outputs = self.t5_model.generate(
+    #             inputs_embeds=inputs_embeds,
+    #             attention_mask=encoder_atts,
+    #             do_sample=False,
+    #             top_p=0.9,
+    #             temperature=1,
+    #             num_beams=self.beam_size,
+    #             max_length=self.max_txt_len,
+    #             repetition_penalty=1.2,
+    #             length_penalty=1.0,
+    #             num_return_sequences=self.beam_size,
+    #             return_dict_in_generate=True,
+    #             output_scores=True,
+    #         )
 
-        transition_scores = self.t5_model.compute_transition_scores(
-            outputs.sequences, outputs.scores, outputs.beam_indices, normalize_logits=False
-        )
-        output_length = torch.sum(transition_scores < 0, dim=1).clamp(min=1)
-        sequences_scores = transition_scores.sum(dim=1) / output_length
+    #     batch_size = output_caption_ids.size(0)
+    #     generated_ids = outputs.sequences
+    #     decoder_input_ids = generated_ids[:, :-1]
+    #     labels = generated_ids[:, 1:]
+    #     pad_token_id = self.t5_tokenizer.pad_token_id
+    #     labels_mask = labels.ne(pad_token_id)
 
-        batch_size = output_caption_ids.size(0)
-        sequences_scores = sequences_scores.view(batch_size, -1)
+    #     repeated_inputs_embeds = inputs_embeds.repeat_interleave(self.beam_size, dim=0)
+    #     repeated_encoder_atts = encoder_atts.repeat_interleave(self.beam_size, dim=0)
+    #     score_outputs = self.t5_model(
+    #         inputs_embeds=repeated_inputs_embeds,
+    #         attention_mask=repeated_encoder_atts,
+    #         decoder_input_ids=decoder_input_ids,
+    #         return_dict=True,
+    #     )
+    #     token_log_probs = F.log_softmax(score_outputs.logits, dim=-1)
+    #     selected_log_probs = token_log_probs.gather(
+    #         dim=-1,
+    #         index=labels.unsqueeze(-1),
+    #     ).squeeze(-1)
+    #     selected_log_probs = selected_log_probs.masked_fill(~labels_mask, 0.0)
+    #     output_length = labels_mask.sum(dim=1).clamp(min=1)
+    #     sequences_scores = selected_log_probs.sum(dim=1) / output_length
+    #     sequences_scores = sequences_scores.view(batch_size, self.beam_size)
 
-        caps_gen = self.t5_tokenizer.batch_decode(outputs.sequences, skip_special_tokens=True)
-        caps_gen = [text.strip() for text in caps_gen]
+    #     caps_gen = self.t5_tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+    #     caps_gen = [text.strip() for text in caps_gen]
 
-        # Use T5-tokenized GT IDs if available (correct vocab), otherwise
-        # fall back to output_caption_ids (BERT vocab — legacy/incorrect)
-        if t5_output_caption_ids is not None:
-            gt_ids = t5_output_caption_ids
-        else:
-            gt_ids = output_caption_ids
-        pad_token_id = self.t5_tokenizer.pad_token_id
-        gt_tokens = gt_ids.clone().masked_fill(gt_ids.lt(0), pad_token_id)
-        caps_gt = self.t5_tokenizer.batch_decode(gt_tokens, skip_special_tokens=True)
-        caps_gt = list(itertools.chain(*([c] * self.beam_size for c in caps_gt)))
-        caps_gt = [[c] for c in caps_gt]
+    #     # Use T5-tokenized GT IDs if available (correct vocab), otherwise
+    #     # fall back to output_caption_ids (BERT vocab — legacy/incorrect)
+    #     if t5_output_caption_ids is not None:
+    #         gt_ids = t5_output_caption_ids
+    #     else:
+    #         gt_ids = output_caption_ids
+    #     gt_tokens = gt_ids.clone().masked_fill(gt_ids.lt(0), pad_token_id)
+    #     caps_gt = self.t5_tokenizer.batch_decode(gt_tokens, skip_special_tokens=True)
+    #     caps_gt = list(itertools.chain(*([c] * self.beam_size for c in caps_gt)))
+    #     caps_gt = [[c] for c in caps_gt]
 
-        caps_gen, caps_gt = tokenize(caps_gt, caps_gen)
-        reward = Cider().compute_score(caps_gt, caps_gen)[1].astype(np.float32)
-        reward = torch.from_numpy(reward).to(inputs_embeds.device).view(batch_size, self.beam_size)
-        reward_baseline = torch.mean(reward, -1, keepdim=True)
+    #     caps_gen, caps_gt = tokenize(caps_gt, caps_gen)
+    #     reward = Cider().compute_score(caps_gt, caps_gen)[1].astype(np.float32)
+    #     reward = torch.from_numpy(reward).to(inputs_embeds.device).view(batch_size, self.beam_size)
+    #     reward_baseline = torch.mean(reward, -1, keepdim=True)
 
-        loss = -(sequences_scores) * (reward - reward_baseline)
-        return loss.mean()
+    #     loss = -(sequences_scores) * (reward - reward_baseline).detach()
+    #     return loss.mean()
 
     def _get_t5_caption_loss(self, visual_output, video_mask, output_caption_ids, t5_output_caption_ids=None):
         if output_caption_ids is None:
@@ -602,6 +619,83 @@ class UniVL(UniVLPreTrainedModel):
             if self.training and getattr(self, "scst", False):
                 return self._compute_scst_caption_loss(inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids)
             return self._compute_xe_caption_loss(inputs_embeds, encoder_atts, t5_output_caption_ids)
+
+
+    def _get_cider_scorer(self):
+        if self._cider_scorer is None:
+            from pycocoevalcap.cider.cider import Cider
+            self._cider_scorer = Cider()
+        return self._cider_scorer
+
+    def _compute_scst_caption_loss(self, inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids=None):
+        batch_size = output_caption_ids.size(0)
+        pad_token_id = self.t5_tokenizer.pad_token_id
+
+        # ── 1. Sample sequences (no grad cần thiết ở đây) ──
+        with torch.no_grad():
+            outputs = self.t5_model.generate(
+                inputs_embeds=inputs_embeds,
+                attention_mask=encoder_atts,
+                do_sample=True,
+                top_p=0.9,
+                temperature=1.0,
+                num_beams=1,
+                max_length=self.max_txt_len,
+                min_length=3,
+                repetition_penalty=1.2,
+                num_return_sequences=self.beam_size,
+                return_dict_in_generate=True,
+            )
+            generated_ids = outputs.sequences  # (B*beam, L)
+
+        # ── 2. Tính CIDEr reward (vẫn no_grad) ──
+        with torch.no_grad():
+            caps_gen = self.t5_tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+            caps_gen = [t.strip() for t in caps_gen]
+
+            gt_ids = t5_output_caption_ids if t5_output_caption_ids is not None else output_caption_ids
+            gt_tokens = gt_ids.clone().masked_fill(gt_ids.lt(0), pad_token_id)
+            caps_gt = self.t5_tokenizer.batch_decode(gt_tokens, skip_special_tokens=True)
+            caps_gt_repeated = [[c] for c in itertools.chain.from_iterable(
+                [c] * self.beam_size for c in caps_gt
+            )]
+
+            caps_gen_tok, caps_gt_tok = tokenize(caps_gt_repeated, caps_gen)
+            from pycocoevalcap.cider.cider import Cider
+            reward = self._get_cider_scorer().compute_score(caps_gt_tok, caps_gen_tok)[1].astype(np.float32)
+            reward = torch.from_numpy(reward).to(inputs_embeds.device).view(batch_size, self.beam_size)
+            reward_baseline = reward.mean(dim=-1, keepdim=True)
+            advantage = (reward - reward_baseline)  # (B, beam) — detached, dùng làm weight
+
+        # ── 3. Forward pass CÓ GRAD để tính log probs ──
+        # Chỉ cần encoder output 1 lần, repeat cho beam
+        repeated_inputs_embeds = inputs_embeds.repeat_interleave(self.beam_size, dim=0)   # (B*beam, L, H)
+        repeated_encoder_atts = encoder_atts.repeat_interleave(self.beam_size, dim=0)     # (B*beam, L)
+
+        decoder_input_ids = generated_ids[:, :-1].contiguous()   # (B*beam, L-1)
+        labels = generated_ids[:, 1:].contiguous()                # (B*beam, L-1)
+
+        score_outputs = self.t5_model(
+            inputs_embeds=repeated_inputs_embeds,
+            attention_mask=repeated_encoder_atts,
+            decoder_input_ids=decoder_input_ids,
+            return_dict=True,
+        )  # grad_fn còn nguyên ở đây
+
+        token_log_probs = F.log_softmax(score_outputs.logits, dim=-1)   # (B*beam, L-1, vocab)
+        selected_log_probs = token_log_probs.gather(
+            dim=-1, index=labels.unsqueeze(-1)
+        ).squeeze(-1)                                                    # (B*beam, L-1)
+
+        labels_mask = labels.ne(pad_token_id)
+        selected_log_probs = selected_log_probs.masked_fill(~labels_mask, 0.0)
+        output_length = labels_mask.sum(dim=1).clamp(min=1)
+        sequences_scores = (selected_log_probs.sum(dim=1) / output_length).view(batch_size, self.beam_size)
+        # sequences_scores có grad_fn ✓
+
+        # ── 4. SCST loss ──
+        loss = -(sequences_scores * advantage.detach())
+        return loss.mean()
 
     def generate_caption_ids(self, visual_output, video_mask, num_beams=None, max_length=None):
         if num_beams is None:
