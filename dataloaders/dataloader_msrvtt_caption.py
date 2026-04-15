@@ -235,6 +235,10 @@ class MSRVTT_Caption_DataLoader(Dataset):
 
         return video, video_mask, masked_video, video_labels_index
 
+    def get_all_refs_for_video(self, video_id):
+        """Return all reference captions for a given video_id."""
+        return self.video_sentences_dict.get(video_id, [])
+
     def __getitem__(self, idx):
         video_id, caption = self.sentences_dict[idx]
 
@@ -249,4 +253,4 @@ class MSRVTT_Caption_DataLoader(Dataset):
         return pairs_text, pairs_mask, pairs_segment, video, video_mask, \
                pairs_masked_text, pairs_token_labels, masked_video, video_labels_index, \
                pairs_input_caption_ids, pairs_decoder_mask, pairs_output_caption_ids, \
-               pairs_t5_output_caption_ids
+               pairs_t5_output_caption_ids, idx

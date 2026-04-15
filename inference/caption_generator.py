@@ -31,7 +31,8 @@ def eval_epoch(
     total_loss = 0.0
     model.eval()
     for batch in test_dataloader:
-        batch = tuple(t.to(device, non_blocking=True) for t in batch)
+        # Last element is sample indices (not needed for eval), rest are tensors
+        batch = tuple(t.to(device, non_blocking=True) for t in batch[:-1])
 
         input_ids, input_mask, segment_ids, video, video_mask, \
         pairs_masked_text, pairs_token_labels, masked_video, video_labels_index, \

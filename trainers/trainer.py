@@ -10,20 +10,37 @@ def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, 
     start_time = time.time()
     total_loss = 0
 
+    # Check if SCST is enabled — if so, we need to look up all GT refs per video
+    use_scst = getattr(args, 'scst', False)
+    dataset = train_dataloader.dataset
+
     for step, batch in enumerate(train_dataloader):
-        batch = tuple(t.to(device=device, non_blocking=True) for t in batch)
+        # Last element is sample indices (ints), rest are tensors
+        sample_indices = batch[-1]
+        tensor_batch = batch[:-1]
+        tensor_batch = tuple(t.to(device=device, non_blocking=True) for t in tensor_batch)
 
         input_ids, input_mask, segment_ids, video, video_mask, \
         pairs_masked_text, pairs_token_labels, masked_video, video_labels_index,\
         pairs_input_caption_ids, pairs_decoder_mask, pairs_output_caption_ids, \
-        pairs_t5_output_caption_ids = batch
+        pairs_t5_output_caption_ids = tensor_batch
+
+        # Build gt_refs: list of list of strings (all GT captions per video)
+        gt_refs = None
+        if use_scst and hasattr(dataset, 'sentences_dict') and hasattr(dataset, 'video_sentences_dict'):
+            gt_refs = []
+            for idx in sample_indices.tolist():
+                video_id, _ = dataset.sentences_dict[idx]
+                all_captions = dataset.video_sentences_dict.get(video_id, [])
+                gt_refs.append(all_captions)
 
         loss = model(input_ids, segment_ids, input_mask, video, video_mask,
                      pairs_masked_text=pairs_masked_text, pairs_token_labels=pairs_token_labels,
                      masked_video=masked_video, video_labels_index=video_labels_index,
                      input_caption_ids=pairs_input_caption_ids, decoder_mask=pairs_decoder_mask,
                      output_caption_ids=pairs_output_caption_ids,
-                     t5_output_caption_ids=pairs_t5_output_caption_ids)
+                     t5_output_caption_ids=pairs_t5_output_caption_ids,
+                     gt_refs=gt_refs)
 
         if n_gpu > 1:
             loss = loss.mean()

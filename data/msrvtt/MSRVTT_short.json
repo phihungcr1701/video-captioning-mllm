@@ -1,0 +1,340 @@
+{
+    "info": {
+        "contributor": "Microsoft MSM group",
+        "data_created": "2017-04-15 14:30:20",
+        "version": "2.0",
+        "description": "This is 2.0 version of the 2017 MSR-VTT dataset.",
+        "year": "2017"
+    },
+    "videos": [
+        {
+            "category": 9,
+            "url": "https://www.youtube.com/watch?v=9lZi22qLlEo",
+            "video_id": "video0",
+            "start time": 137.72,
+            "end time": 149.44,
+            "split": "train",
+            "id": 0
+        },
+        {
+            "category": 16,
+            "url": "https://www.youtube.com/watch?v=w4JM08PDEng",
+            "video_id": "video1",
+            "start time": 184.33,
+            "end time": 206.89,
+            "split": "train",
+            "id": 1
+        },
+        {
+            "category": 9,
+            "url": "https://www.youtube.com/watch?v=QA7KVQq9vKA",
+            "video_id": "video2",
+            "start time": 31.17,
+            "end time": 41.24,
+            "split": "train",
+            "id": 2
+        }
+    ],
+    "sentences": [
+        {
+            "caption": "a guying showing a tool",
+            "video_id": "video2",
+            "sen_id": 77740
+        },
+        {
+            "caption": "a man fixes a car",
+            "video_id": "video2",
+            "sen_id": 77741
+        },
+        {
+            "caption": "a man holding a combustion leak tester",
+            "video_id": "video2",
+            "sen_id": 77742
+        },
+        {
+            "caption": "a man is explaining how to use a car repair kit",
+            "video_id": "video2",
+            "sen_id": 77743
+        },
+        {
+            "caption": "a man is showing a pack",
+            "video_id": "video2",
+            "sen_id": 77744
+        },
+        {
+            "caption": "a man is showing how to test a vehicle for a leak",
+            "video_id": "video2",
+            "sen_id": 77745
+        },
+        {
+            "caption": "a man is talking about a combustion leak tester",
+            "video_id": "video2",
+            "sen_id": 77746
+        },
+        {
+            "caption": "a man is talking about a test for a car engine",
+            "video_id": "video2",
+            "sen_id": 77747
+        },
+        {
+            "caption": "a man is talking next to a car",
+            "video_id": "video2",
+            "sen_id": 77748
+        },
+        {
+            "caption": "a man is talking with a tool box",
+            "video_id": "video2",
+            "sen_id": 77749
+        },
+        {
+            "caption": "a man is talking",
+            "video_id": "video2",
+            "sen_id": 77750
+        },
+        {
+            "caption": "a man picks up a combustion leak test",
+            "video_id": "video2",
+            "sen_id": 77751
+        },
+        {
+            "caption": "a man presents a piece of equipment",
+            "video_id": "video2",
+            "sen_id": 77752
+        },
+        {
+            "caption": "a man shows an item which can be used for car repair",
+            "video_id": "video2",
+            "sen_id": 77753
+        },
+        {
+            "caption": "a man shows off his tools to fix his car",
+            "video_id": "video2",
+            "sen_id": 77754
+        },
+        {
+            "caption": "a man stands outside talking about an automotive combustion leak tester",
+            "video_id": "video2",
+            "sen_id": 77755
+        },
+        {
+            "caption": "an advertisement for tools",
+            "video_id": "video2",
+            "sen_id": 77756
+        },
+        {
+            "caption": "man talking about car things",
+            "video_id": "video2",
+            "sen_id": 77757
+        },
+        {
+            "caption": "scotty kilmer shows you how to test for leaks",
+            "video_id": "video2",
+            "sen_id": 77758
+        },
+        {
+            "caption": "a man is showing how to test a vehicle for a leak",
+            "video_id": "video2",
+            "sen_id": 77759
+        },
+        {
+            "caption": "a car is shown",
+            "video_id": "video0",
+            "sen_id": 109460
+        },
+        {
+            "caption": "a group is dancing",
+            "video_id": "video0",
+            "sen_id": 109461
+        },
+        {
+            "caption": "a man drives a vehicle through the countryside",
+            "video_id": "video0",
+            "sen_id": 109462
+        },
+        {
+            "caption": "a man drives down the road in an audi",
+            "video_id": "video0",
+            "sen_id": 109463
+        },
+        {
+            "caption": "a man driving a car",
+            "video_id": "video0",
+            "sen_id": 109464
+        },
+        {
+            "caption": "a man is driving a car",
+            "video_id": "video0",
+            "sen_id": 109465
+        },
+        {
+            "caption": "a man is driving down a road",
+            "video_id": "video0",
+            "sen_id": 109466
+        },
+        {
+            "caption": "a man is driving in a car as part of a commercial",
+            "video_id": "video0",
+            "sen_id": 109467
+        },
+        {
+            "caption": "a man is driving",
+            "video_id": "video0",
+            "sen_id": 109468
+        },
+        {
+            "caption": "a man riding the car speedly in a narrow road",
+            "video_id": "video0",
+            "sen_id": 109469
+        },
+        {
+            "caption": "a man showing the various features of a car",
+            "video_id": "video0",
+            "sen_id": 109470
+        },
+        {
+            "caption": "a man silently narrates his experience driving an audi",
+            "video_id": "video0",
+            "sen_id": 109471
+        },
+        {
+            "caption": "a person is driving his car around curves in the road",
+            "video_id": "video0",
+            "sen_id": 109472
+        },
+        {
+            "caption": "a person telling about a car",
+            "video_id": "video0",
+            "sen_id": 109473
+        },
+        {
+            "caption": "guy driving a car down the road",
+            "video_id": "video0",
+            "sen_id": 109474
+        },
+        {
+            "caption": "man talking about a car while driving",
+            "video_id": "video0",
+            "sen_id": 109475
+        },
+        {
+            "caption": "the man drives the car",
+            "video_id": "video0",
+            "sen_id": 109476
+        },
+        {
+            "caption": "the man driving the audi as smooth as possible",
+            "video_id": "video0",
+            "sen_id": 109477
+        },
+        {
+            "caption": "a man is driving",
+            "video_id": "video0",
+            "sen_id": 109478
+        },
+        {
+            "caption": "guy driving a car down the road",
+            "video_id": "video0",
+            "sen_id": 109479
+        },
+        {
+            "caption": "in a kitchen a woman adds different ingredients into the pot and stirs it",
+            "video_id": "video1",
+            "sen_id": 157920
+        },
+        {
+            "caption": "a woman puts prawns and seasonings into a large pot on a stove",
+            "video_id": "video1",
+            "sen_id": 157921
+        },
+        {
+            "caption": "in the kitchen a woman makes a dish by adding ingredients mixing and allowing to boil on flame",
+            "video_id": "video1",
+            "sen_id": 157922
+        },
+        {
+            "caption": "a woman adding ingredients to a pot on the stove and stirring",
+            "video_id": "video1",
+            "sen_id": 157923
+        },
+        {
+            "caption": "instructions on how to cook a dish of prawns or crayfish are given on screen while the chef prepares the dish",
+            "video_id": "video1",
+            "sen_id": 157924
+        },
+        {
+            "caption": "a woman is in the kitchen making a recipe in a large pot with many ingredients",
+            "video_id": "video1",
+            "sen_id": 157925
+        },
+        {
+            "caption": "a woman adds some packets of spices and spoonfuls of tomato sauce to a pot then stirs it and covers the pot",
+            "video_id": "video1",
+            "sen_id": 157926
+        },
+        {
+            "caption": "a person add ingredients to a pot in a counter than stirs it",
+            "video_id": "video1",
+            "sen_id": 157927
+        },
+        {
+            "caption": "a person puts items in a pot on the stove in the kitchen",
+            "video_id": "video1",
+            "sen_id": 157928
+        },
+        {
+            "caption": "a woman cooking food with a metal pan on top of a stove",
+            "video_id": "video1",
+            "sen_id": 157929
+        },
+        {
+            "caption": "a woman adds different ingredients into a a pot on the stove",
+            "video_id": "video1",
+            "sen_id": 157930
+        },
+        {
+            "caption": "a woman in a kitchen is cooking a stew in a large pan on her stove",
+            "video_id": "video1",
+            "sen_id": 157931
+        },
+        {
+            "caption": "a women in a multi-color outfit is cooking a stew type dish in a silver pot",
+            "video_id": "video1",
+            "sen_id": 157932
+        },
+        {
+            "caption": "a woman adds ingredients to a pot that is simmering on a stove",
+            "video_id": "video1",
+            "sen_id": 157933
+        },
+        {
+            "caption": "a woman is preparing a seafood stew recipe on a stove demonstrating each step herself while at the same time the easy to read directions",
+            "video_id": "video1",
+            "sen_id": 157934
+        },
+        {
+            "caption": "in a kitchen a lady preferred crayfish with mixing of curry powder",
+            "video_id": "video1",
+            "sen_id": 157935
+        },
+        {
+            "caption": "a  woman and a bowl  spoon mixing dish inside kitchen to prepare to serve to eat displaying on screen",
+            "video_id": "video1",
+            "sen_id": 157936
+        },
+        {
+            "caption": "cooking the dried smoked prawn in a vessel having boiled water and the lied closed",
+            "video_id": "video1",
+            "sen_id": 157937
+        },
+        {
+            "caption": "a lady is making dried prawns curry and she added tomato puree and salt in it",
+            "video_id": "video1",
+            "sen_id": 157938
+        },
+        {
+            "caption": "a woman in a colorful scarf is showing how to make a stew",
+            "video_id": "video1",
+            "sen_id": 157939
+        }
+    ]
+}

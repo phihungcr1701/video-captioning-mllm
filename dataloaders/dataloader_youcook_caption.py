@@ -245,4 +245,4 @@ class Youcook_Caption_DataLoader(Dataset):
         return pairs_text, pairs_mask, pairs_segment, video, video_mask, \
                pairs_masked_text, pairs_token_labels, masked_video, video_labels_index, \
                pairs_input_caption_ids, pairs_decoder_mask, pairs_output_caption_ids, \
-               pairs_t5_output_caption_ids
+               pairs_t5_output_caption_ids, feature_idx

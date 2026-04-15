@@ -319,7 +319,7 @@ class UniVL(UniVLPreTrainedModel):
     def forward(self, input_ids, token_type_ids, attention_mask, video, video_mask=None,
                 pairs_masked_text=None, pairs_token_labels=None, masked_video=None, video_labels_index=None,
                 input_caption_ids=None, decoder_mask=None, output_caption_ids=None,
-                t5_output_caption_ids=None):
+                t5_output_caption_ids=None, gt_refs=None):
 
         input_ids = input_ids.view(-1, input_ids.shape[-1])
         token_type_ids = token_type_ids.view(-1, token_type_ids.shape[-1])
@@ -391,7 +391,8 @@ class UniVL(UniVLPreTrainedModel):
                         decoder_loss = self._get_t5_caption_loss(visual_output,
                                                                  video_mask,
                                                                  output_caption_ids,
-                                                                 t5_output_caption_ids)
+                                                                 t5_output_caption_ids,
+                                                                 gt_refs=gt_refs)
                     else:
                         raise NotImplementedError
                     loss += decoder_loss
@@ -600,7 +601,7 @@ class UniVL(UniVLPreTrainedModel):
     #     loss = -(sequences_scores) * (reward - reward_baseline).detach()
     #     return loss.mean()
 
-    def _get_t5_caption_loss(self, visual_output, video_mask, output_caption_ids, t5_output_caption_ids=None):
+    def _get_t5_caption_loss(self, visual_output, video_mask, output_caption_ids, t5_output_caption_ids=None, gt_refs=None):
         if output_caption_ids is None:
             return torch.tensor(0.0, device=visual_output.device)
         if t5_output_caption_ids is None:
@@ -617,7 +618,7 @@ class UniVL(UniVLPreTrainedModel):
                 visual_output, video_mask
             )
             if self.training and getattr(self, "scst", False):
-                return self._compute_scst_caption_loss(inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids)
+                return self._compute_scst_caption_loss(inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids, gt_refs=gt_refs)
             return self._compute_xe_caption_loss(inputs_embeds, encoder_atts, t5_output_caption_ids)
 
 
@@ -627,11 +628,11 @@ class UniVL(UniVLPreTrainedModel):
             self._cider_scorer = Cider()
         return self._cider_scorer
 
-    def _compute_scst_caption_loss(self, inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids=None):
+    def _compute_scst_caption_loss(self, inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids=None, gt_refs=None):
         batch_size = output_caption_ids.size(0)
         pad_token_id = self.t5_tokenizer.pad_token_id
 
-        # ── 1. Sample sequences (no grad cần thiết ở đây) ──
+        # ── 1. Sample sequences (no grad) ──
         with torch.no_grad():
             outputs = self.t5_model.generate(
                 inputs_embeds=inputs_embeds,
@@ -648,27 +649,35 @@ class UniVL(UniVLPreTrainedModel):
             )
             generated_ids = outputs.sequences  # (B*beam, L)
 
-        # ── 2. Tính CIDEr reward (vẫn no_grad) ──
+        # ── 2. Compute CIDEr reward using ALL GT references (no grad) ──
         with torch.no_grad():
             caps_gen = self.t5_tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
             caps_gen = [t.strip() for t in caps_gen]
 
-            gt_ids = t5_output_caption_ids if t5_output_caption_ids is not None else output_caption_ids
-            gt_tokens = gt_ids.clone().masked_fill(gt_ids.lt(0), pad_token_id)
-            caps_gt = self.t5_tokenizer.batch_decode(gt_tokens, skip_special_tokens=True)
-            caps_gt_repeated = [[c] for c in itertools.chain.from_iterable(
-                [c] * self.beam_size for c in caps_gt
-            )]
+            # Build GT references for CIDEr computation
+            if gt_refs is not None and len(gt_refs) == batch_size:
+                # gt_refs: list of list of strings, e.g. [["cap1", "cap2", ...], ...]
+                # Each element has all reference captions for that video (e.g. 20 for MSRVTT)
+                caps_gt_repeated = []
+                for sample_refs in gt_refs:
+                    for _ in range(self.beam_size):
+                        caps_gt_repeated.append(sample_refs)  # all refs for this video
+            else:
+                # Fallback: decode single GT from t5_output_caption_ids (legacy behavior)
+                gt_ids = t5_output_caption_ids if t5_output_caption_ids is not None else output_caption_ids
+                gt_tokens = gt_ids.clone().masked_fill(gt_ids.lt(0), pad_token_id)
+                caps_gt = self.t5_tokenizer.batch_decode(gt_tokens, skip_special_tokens=True)
+                caps_gt_repeated = [[c] for c in itertools.chain.from_iterable(
+                    [c] * self.beam_size for c in caps_gt
+                )]
 
             caps_gen_tok, caps_gt_tok = tokenize(caps_gt_repeated, caps_gen)
-            from pycocoevalcap.cider.cider import Cider
             reward = self._get_cider_scorer().compute_score(caps_gt_tok, caps_gen_tok)[1].astype(np.float32)
             reward = torch.from_numpy(reward).to(inputs_embeds.device).view(batch_size, self.beam_size)
             reward_baseline = reward.mean(dim=-1, keepdim=True)
-            advantage = (reward - reward_baseline)  # (B, beam) — detached, dùng làm weight
+            advantage = (reward - reward_baseline)  # (B, beam)
 
-        # ── 3. Forward pass CÓ GRAD để tính log probs ──
-        # Chỉ cần encoder output 1 lần, repeat cho beam
+        # ── 3. Forward pass WITH GRAD for log probs ──
         repeated_inputs_embeds = inputs_embeds.repeat_interleave(self.beam_size, dim=0)   # (B*beam, L, H)
         repeated_encoder_atts = encoder_atts.repeat_interleave(self.beam_size, dim=0)     # (B*beam, L)
 
@@ -680,7 +689,7 @@ class UniVL(UniVLPreTrainedModel):
             attention_mask=repeated_encoder_atts,
             decoder_input_ids=decoder_input_ids,
             return_dict=True,
-        )  # grad_fn còn nguyên ở đây
+        )
 
         token_log_probs = F.log_softmax(score_outputs.logits, dim=-1)   # (B*beam, L-1, vocab)
         selected_log_probs = token_log_probs.gather(
@@ -691,7 +700,6 @@ class UniVL(UniVLPreTrainedModel):
         selected_log_probs = selected_log_probs.masked_fill(~labels_mask, 0.0)
         output_length = labels_mask.sum(dim=1).clamp(min=1)
         sequences_scores = (selected_log_probs.sum(dim=1) / output_length).view(batch_size, self.beam_size)
-        # sequences_scores có grad_fn ✓
 
         # ── 4. SCST loss ──
         loss = -(sequences_scores * advantage.detach())
