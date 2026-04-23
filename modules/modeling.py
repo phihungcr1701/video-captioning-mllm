@@ -243,7 +243,7 @@ class UniVL(UniVLPreTrainedModel):
                 self.scst = getattr(self.task_config, "scst", False)
                 self.beam_size = getattr(self.task_config, "beam_size", 5)
                 self.max_txt_len = getattr(self.task_config, "max_txt_len", 32)
-                self.prompt = " A video of"
+                self.prompt = "A video of"
 
                 t5_model_name = getattr(self.task_config, "t5_model", "google/flan-t5-xl")
                 self.t5_tokenizer = T5TokenizerFast.from_pretrained(t5_model_name)
@@ -336,6 +336,7 @@ class UniVL(UniVLPreTrainedModel):
             self._stage_one
             or (self._stage_two and self.task_config.do_pretrain)
             or (self._stage_two and self.task_config.task_type == "retrieval")
+            or (self._stage_two and self.task_config.task_type == "caption")
         )
 
         if _need_text_encoder:
@@ -392,7 +393,9 @@ class UniVL(UniVLPreTrainedModel):
                                                                  video_mask,
                                                                  output_caption_ids,
                                                                  t5_output_caption_ids,
-                                                                 gt_refs=gt_refs)
+                                                                 gt_refs=gt_refs,
+                                                                 sequence_output=sequence_output,
+                                                                 attention_mask=attention_mask)
                     else:
                         raise NotImplementedError
                     loss += decoder_loss
@@ -421,7 +424,9 @@ class UniVL(UniVLPreTrainedModel):
                 decoder_loss = self._get_t5_caption_loss(visual_output,
                                                          video_mask,
                                                          output_caption_ids,
-                                                         t5_output_caption_ids)
+                                                         t5_output_caption_ids,
+                                                         sequence_output=sequence_output,
+                                                         attention_mask=attention_mask)
                 return decoder_loss, visual_output
             else:
                 return None, visual_output
@@ -477,8 +482,8 @@ class UniVL(UniVLPreTrainedModel):
         visual_output = visual_layers[-1]
         return visual_output
 
-    def _get_cross_output(self, visual_output, video_mask, num_query_token=32):
-        # Use BLIP2 Qformer query cross-attention and expose query tokens as encoder outputs.
+    def _get_cross_output(self, visual_output, video_mask, sequence_output=None, attention_mask=None, num_query_token=32):
+        # Use BLIP2 Qformer query cross-attention with text+visual features (if text available)
         b_visual, _, _ = visual_output.size()
         query_len = min(num_query_token, self.query_tokens.size(1))
         qformer_dtype = self.query_tokens.dtype
@@ -486,12 +491,31 @@ class UniVL(UniVLPreTrainedModel):
             device=visual_output.device,
             dtype=qformer_dtype,
         )
-        visual_for_qformer = self.qformer_visual_proj(visual_output).to(dtype=qformer_dtype)
-        image_atts = video_mask.long()
+        
+        # Prepare encoder inputs: text + visual (if text available)
+        if sequence_output is not None:
+            # Concat text features + visual features
+            visual_for_qformer = self.qformer_visual_proj(visual_output).to(dtype=qformer_dtype)
+            encoder_hidden_states = torch.cat(
+                [sequence_output.to(dtype=qformer_dtype), visual_for_qformer],
+                dim=1
+            )  # [batch, text_len + visual_len, hidden_size]
+            
+            # Concat attention masks
+            encoder_attention_mask = torch.cat(
+                [attention_mask, video_mask],
+                dim=1
+            ).long()  # [batch, text_len + visual_len]
+        else:
+            # Fallback: visual-only (for retrieval and other tasks)
+            visual_for_qformer = self.qformer_visual_proj(visual_output).to(dtype=qformer_dtype)
+            encoder_hidden_states = visual_for_qformer
+            encoder_attention_mask = video_mask.long()
+        
         query_output = self.Qformer.bert(
             query_embeds=query_tokens,
-            encoder_hidden_states=visual_for_qformer,
-            encoder_attention_mask=image_atts,
+            encoder_hidden_states=encoder_hidden_states,
+            encoder_attention_mask=encoder_attention_mask,
             return_dict=True,
         )
 
@@ -500,8 +524,12 @@ class UniVL(UniVLPreTrainedModel):
 
         return cross_output, pooled_output
 
-    def _build_t5_encoder_inputs(self, visual_output, video_mask):
-        cross_output, _ = self._get_cross_output(visual_output, video_mask)
+    def _build_t5_encoder_inputs(self, visual_output, video_mask, sequence_output=None, attention_mask=None):
+        cross_output, _ = self._get_cross_output(
+            visual_output, video_mask,
+            sequence_output=sequence_output,
+            attention_mask=attention_mask
+        )
         inputs_t5 = self.t5_proj(cross_output)
         atts_t5 = torch.ones(inputs_t5.size()[:-1], dtype=torch.long, device=inputs_t5.device)
 
@@ -601,7 +629,7 @@ class UniVL(UniVLPreTrainedModel):
     #     loss = -(sequences_scores) * (reward - reward_baseline).detach()
     #     return loss.mean()
 
-    def _get_t5_caption_loss(self, visual_output, video_mask, output_caption_ids, t5_output_caption_ids=None, gt_refs=None):
+    def _get_t5_caption_loss(self, visual_output, video_mask, output_caption_ids, t5_output_caption_ids=None, gt_refs=None, sequence_output=None, attention_mask=None):
         if output_caption_ids is None:
             return torch.tensor(0.0, device=visual_output.device)
         if t5_output_caption_ids is None:
@@ -615,7 +643,9 @@ class UniVL(UniVLPreTrainedModel):
 
         with torch.amp.autocast(device_type="cuda",dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
             inputs_embeds, encoder_atts = self._build_t5_encoder_inputs(
-                visual_output, video_mask
+                visual_output, video_mask,
+                sequence_output=sequence_output,
+                attention_mask=attention_mask
             )
             if self.training and getattr(self, "scst", False):
                 return self._compute_scst_caption_loss(inputs_embeds, encoder_atts, output_caption_ids, t5_output_caption_ids, gt_refs=gt_refs)
