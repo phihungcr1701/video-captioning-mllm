@@ -223,6 +223,18 @@ class UniVL(UniVLPreTrainedModel):
                 )
             else:
                 self.qformer_visual_proj = nn.Identity()
+            
+            # Add text projection for caption task (Phase 2: text+visual concat)
+            if self.qformer_vision_width != bert_config.hidden_size:
+                self.qformer_text_proj = nn.Linear(bert_config.hidden_size, self.qformer_vision_width)
+                show_log(
+                    task_config,
+                    "Add QFormer text projection: {} -> {}.".format(
+                        bert_config.hidden_size, self.qformer_vision_width
+                    )
+                )
+            else:
+                self.qformer_text_proj = nn.Identity()
             self.Qformer, self.query_tokens = Blip2Base.init_Qformer(
                 self.num_query_token,
                 self.qformer_vision_width,
@@ -494,12 +506,15 @@ class UniVL(UniVLPreTrainedModel):
         
         # Prepare encoder inputs: text + visual (if text available)
         if sequence_output is not None:
-            # Concat text features + visual features
+            # Project text features to match visual dimension
+            text_for_qformer = self.qformer_text_proj(sequence_output).to(dtype=qformer_dtype)
+            # Project visual features
             visual_for_qformer = self.qformer_visual_proj(visual_output).to(dtype=qformer_dtype)
+            # Concat text + visual features on sequence dimension
             encoder_hidden_states = torch.cat(
-                [sequence_output.to(dtype=qformer_dtype), visual_for_qformer],
+                [text_for_qformer, visual_for_qformer],
                 dim=1
-            )  # [batch, text_len + visual_len, hidden_size]
+            )  # [batch, text_len + visual_len, qformer_vision_width]
             
             # Concat attention masks
             encoder_attention_mask = torch.cat(
