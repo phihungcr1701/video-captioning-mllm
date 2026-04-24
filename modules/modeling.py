@@ -756,7 +756,15 @@ class UniVL(UniVLPreTrainedModel):
         loss = -(sequences_scores * advantage.detach())
         return loss.mean()
 
-    def generate_caption_ids(self, visual_output, video_mask, num_beams=None, max_length=None):
+    def generate_caption_ids(
+        self,
+        visual_output,
+        video_mask,
+        num_beams=None,
+        max_length=None,
+        sequence_output=None,
+        attention_mask=None,
+    ):
         if num_beams is None:
             num_beams = max(1, getattr(self, "beam_size", 1))
         if max_length is None:
@@ -764,7 +772,10 @@ class UniVL(UniVLPreTrainedModel):
 
         with torch.amp.autocast(device_type="cuda",dtype=torch.bfloat16, enabled=torch.cuda.is_available()):
             inputs_embeds, encoder_atts = self._build_t5_encoder_inputs(
-                visual_output, video_mask
+                visual_output,
+                video_mask,
+                sequence_output=sequence_output,
+                attention_mask=attention_mask,
             )
             outputs = self.t5_model.generate(
                 inputs_embeds=inputs_embeds,
@@ -778,9 +789,22 @@ class UniVL(UniVLPreTrainedModel):
 
         return outputs
 
-    def generate_caption_text(self, visual_output, video_mask, num_beams=None, max_length=None):
+    def generate_caption_text(
+        self,
+        visual_output,
+        video_mask,
+        num_beams=None,
+        max_length=None,
+        sequence_output=None,
+        attention_mask=None,
+    ):
         output_ids = self.generate_caption_ids(
-            visual_output, video_mask, num_beams=num_beams, max_length=max_length
+            visual_output,
+            video_mask,
+            num_beams=num_beams,
+            max_length=max_length,
+            sequence_output=sequence_output,
+            attention_mask=attention_mask,
         )
         captions = self.t5_tokenizer.batch_decode(output_ids, skip_special_tokens=True)
         return [caption.strip() for caption in captions]

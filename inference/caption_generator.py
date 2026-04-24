@@ -54,12 +54,29 @@ def eval_epoch(
                     loss = loss.mean()
                 total_loss += float(loss)
 
+            # Keep eval generation conditioning consistent with training (text + visual).
+            input_ids_shaped = input_ids.view(-1, input_ids.shape[-1])
+            segment_ids_shaped = segment_ids.view(-1, segment_ids.shape[-1])
+            input_mask_shaped = input_mask.view(-1, input_mask.shape[-1])
+            text_layers, _ = model.bert(
+                input_ids_shaped,
+                segment_ids_shaped,
+                input_mask_shaped,
+                output_all_encoded_layers=True,
+            )
+            sequence_output = text_layers[-1]
+
             video_mask = video_mask.view(-1, video_mask.shape[-1])
 
             beam_size = max(1, getattr(model, "beam_size", 1))
             max_length = getattr(model, "max_txt_len", args.max_words)
             generated_ids = model.generate_caption_ids(
-                visual_output, video_mask, num_beams=beam_size, max_length=max_length
+                visual_output,
+                video_mask,
+                num_beams=beam_size,
+                max_length=max_length,
+                sequence_output=sequence_output,
+                attention_mask=input_mask_shaped,
             )
             all_result_lists.extend(model.t5_tokenizer.batch_decode(generated_ids, skip_special_tokens=True))
 
