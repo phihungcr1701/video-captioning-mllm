@@ -716,7 +716,7 @@ class UniVL(UniVLPreTrainedModel):
                     [c] * self.beam_size for c in caps_gt
                 )]
 
-            caps_gen_tok, caps_gt_tok = tokenize(caps_gt_repeated, caps_gen)
+            caps_gt_tok, caps_gen_tok = tokenize(caps_gt_repeated, caps_gen)
             reward = self._get_cider_scorer().compute_score(caps_gt_tok, caps_gen_tok)[1].astype(np.float32)
             reward = torch.from_numpy(reward).to(inputs_embeds.device).view(batch_size, self.beam_size)
             reward_baseline = reward.mean(dim=-1, keepdim=True)
